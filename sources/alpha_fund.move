@@ -6,7 +6,7 @@ module alpha_dao::alpha_fund {
     use sui::vec_map::{Self, VecMap};
 
     /// Error code for unauthorized access.
-    const ENotFundManager: u64 = 0;
+    const ENotManagerOfThisFund: u64 = 0;
 
     // fund states
     const STATE_OPEN_TO_INVESTORS: u8 = 0;
@@ -16,7 +16,8 @@ module alpha_dao::alpha_fund {
     public struct Fund has key, store {
         id: UID,
         balance: Balance<SUI>,
-        fee_percentage: u16,
+        // performance fee in basis points
+        performance_fee: u16,
         state: u8,
         trader_to_allocation: VecMap<address, u64>,
         investor_to_deposit: VecMap<address, u64>
@@ -39,7 +40,7 @@ module alpha_dao::alpha_fund {
 
         let fund = Fund {
             id: object::new(ctx),
-            fee_percentage: fee_percentage,
+            performance_fee: fee_percentage,
             balance: balance::zero<SUI>(),
             state: STATE_OPEN_TO_INVESTORS,
             trader_to_allocation: trader_to_allocation,
@@ -54,6 +55,30 @@ module alpha_dao::alpha_fund {
         transfer::share_object(fund);
 
         fund_manager_cap
+    }
+
+    #[test_only]
+    public fun new_for_testing(fee_percentage: u16, ctx: &mut TxContext): (Fund, FundManagerCap) {
+        let mut trader_to_allocation: VecMap<address, u64> = vec_map::empty();
+        // set managers initial allocation to zero
+        // this also guarantees that the manager is at index 0 of VecMap
+        trader_to_allocation.insert(ctx.sender(), 0);
+
+        let fund = Fund {
+            id: object::new(ctx),
+            performance_fee: fee_percentage,
+            balance: balance::zero<SUI>(),
+            state: STATE_OPEN_TO_INVESTORS,
+            trader_to_allocation: trader_to_allocation,
+            investor_to_deposit: vec_map::empty(),            
+        };
+
+        let fund_manager_cap = FundManagerCap {
+            id: object::new(ctx),
+            fund_id: fund.id.to_inner()
+        };
+
+        (fund, fund_manager_cap)
     }
 
     public fun invest(fund: &mut Fund, investment_amt: Coin<SUI>, ctx: &TxContext) {
