@@ -51,9 +51,8 @@ module alpha_dao::alpha_fund_tests {
         fund.allocate_to_trader(&manager_cap, TRADER_2, 6_000);
         assert!(fund.get_trader_allocation(TRADER_2).extract() == 6_000, 0);
         assert!(fund.get_trader_allocation(fund.get_manager()).extract() == 8_000, 0);
-
-        test_utils::destroy(fund);
-        test_utils::destroy(manager_cap);  
+   
+        fund.delete(manager_cap);  
 
         scenario.end();
     }
