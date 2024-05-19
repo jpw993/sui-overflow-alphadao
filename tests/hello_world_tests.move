@@ -1,6 +1,6 @@
 #[test_only]
-module hello_world::hello_world_tests {
-    use hello_world::hello_world;
+module alpha_dao::hello_world_tests {
+    use alpha_dao::hello_world;
 
     #[test]
     fun test_hello_world() {

@@ -1,5 +1,5 @@
-/// Module: hello_world
-module hello_world::todo_list {
+/// Module: alpha_dao
+module alpha_dao::todo_list {
     use std::string::String;
 
     /// List of todos. Can be managed by the owner and shared with others.

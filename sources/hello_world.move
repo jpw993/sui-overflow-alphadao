@@ -1,6 +1,6 @@
 /// The module `hello_world` under named address `hello_world`.
 /// The named address is set in the `Move.toml`.
-module hello_world::hello_world {
+module alpha_dao::hello_world {
     // Imports the `String` type from the Standard Library
     use std::string::String;
 
