@@ -20,7 +20,8 @@ module alpha_dao::alpha_fund {
         performance_fee: u16,
         state: u8,
         trader_to_allocation: VecMap<address, u64>,
-        investor_to_deposit: VecMap<address, u64>
+        investor_to_deposit: VecMap<address, u64>,
+        total_deposits: u64
     }
 
     /// The capability granting the fund manager the rights to:
@@ -44,7 +45,8 @@ module alpha_dao::alpha_fund {
             balance: balance::zero<SUI>(),
             state: STATE_OPEN_TO_INVESTORS,
             trader_to_allocation: trader_to_allocation,
-            investor_to_deposit: vec_map::empty(),            
+            investor_to_deposit: vec_map::empty(),      
+            total_deposits: 0      
         };
 
         let fund_manager_cap = FundManagerCap {
@@ -70,7 +72,8 @@ module alpha_dao::alpha_fund {
             balance: balance::zero<SUI>(),
             state: STATE_OPEN_TO_INVESTORS,
             trader_to_allocation: trader_to_allocation,
-            investor_to_deposit: vec_map::empty(),            
+            investor_to_deposit: vec_map::empty(),       
+            total_deposits: 0       
         };
 
         let fund_manager_cap = FundManagerCap {
@@ -81,8 +84,8 @@ module alpha_dao::alpha_fund {
         (fund, fund_manager_cap)
     }
 
-    public fun invest(fund: &mut Fund, investment_amt: Coin<SUI>, ctx: &TxContext) {
-        let investment_balance = investment_amt.into_balance();  
+    public fun invest(fund: &mut Fund, investment: Coin<SUI>, ctx: &TxContext) {
+        let investment_balance = investment.into_balance();  
         let sender = &ctx.sender();
        
         if (fund.investor_to_deposit.contains(sender)) {
@@ -96,20 +99,26 @@ module alpha_dao::alpha_fund {
         let (_key, manager_alloc) = fund.trader_to_allocation.get_entry_by_idx_mut(0);
         *manager_alloc = *manager_alloc + investment_balance.value();
 
+        fund.total_deposits = fund.total_deposits + investment_balance.value();
+
         fund.balance.join(investment_balance);
     }
 
-    public fun get_manager(fund: &Fund): &address {
+    public fun get_total_deposits(fund: &Fund): u64 {
+        fund.total_deposits
+    }
+
+    public fun get_manager(fund: &Fund): address {
         let (key, _value) = fund.trader_to_allocation.get_entry_by_idx(0);
-        key
+        *key
     }
 
-    public fun get_investor_despoit(fund: &Fund, investor: &address): Option<u64> {
-        fund.investor_to_deposit.try_get(investor)       
+    public fun get_investor_despoit(fund: &Fund, investor: address): Option<u64> {
+        fund.investor_to_deposit.try_get(&investor)       
     }
 
-     public fun get_trader_allocation(fund: &Fund, trader: &address): Option<u64> {
-        fund.trader_to_allocation.try_get(trader)       
+     public fun get_trader_allocation(fund: &Fund, trader: address): Option<u64> {
+        fund.trader_to_allocation.try_get(&trader)       
     }
 
 
