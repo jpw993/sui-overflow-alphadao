@@ -8,6 +8,8 @@ module alpha_dao::alpha_fund {
     /// Error code for unauthorized access.
     const ENotManagerOfThisFund: u64 = 0;
 
+    const ENotEoughCapitalAllocation: u64 = 1;
+
     // fund states
     const STATE_OPEN_TO_INVESTORS: u8 = 0;
     const STATE_TRADING: u8 = 1;
@@ -102,6 +104,21 @@ module alpha_dao::alpha_fund {
         fund.total_deposits = fund.total_deposits + investment_balance.value();
 
         fund.balance.join(investment_balance);
+    }
+
+    public fun allocate_to_trader(fund: &mut Fund, manager_cap: &FundManagerCap, trader: address, amt: u64){
+        assert!(fund.id.to_inner() == manager_cap.fund_id, ENotManagerOfThisFund);
+        let (_key, manager_alloc) = fund.trader_to_allocation.get_entry_by_idx_mut(0);
+        assert!(*manager_alloc >= amt, ENotEoughCapitalAllocation);
+        *manager_alloc = *manager_alloc - amt;
+
+             
+        if (fund.trader_to_allocation.contains(&trader)) {
+            let allocation = fund.trader_to_allocation.get_mut(&trader);
+            *allocation = *allocation + amt;
+        } else {
+            fund.trader_to_allocation.insert(trader, amt);
+        }
     }
 
     public fun get_total_deposits(fund: &Fund): u64 {
