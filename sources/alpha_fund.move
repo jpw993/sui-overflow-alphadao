@@ -4,6 +4,7 @@ module alpha_dao::alpha_fund {
     use sui::coin::Coin;
     use sui::sui::SUI;
     use sui::bag::{Self, Bag};
+    use sui::math;
 
     /// Error code for unauthorized access.
     const ENotManagerOfThisFund: u64 = 0;
@@ -235,7 +236,8 @@ module alpha_dao::alpha_fund {
         let collected_fee = (closing_profits.performance_fees * allocation_percent) / (BASIS_POINTS_100_PERCENT as u64);
 
         let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
-        fund_sui_balance.split(collected_fee).into_coin(ctx)                 
+        let to_pay = math::min(collected_fee, fund_sui_balance.value());
+        fund_sui_balance.split(to_pay).into_coin(ctx)                 
     }
 
     public fun collect_investment(fund: &mut Fund, investor_deposit: InvestorDeposit, ctx: &mut TxContext): Coin<SUI> {    
@@ -246,15 +248,16 @@ module alpha_dao::alpha_fund {
 
         assert!(fund.id.to_inner() == fund_id, ENotDepositOfThisFund);
 
-        let closing_profits = fund.closing_profits.extract();
+        let closing_profits = fund.closing_profits.borrow();
 
         assert!(closing_profits.balance_minus_fees > 0, ENotSuiAllocation);   
           
         let percentage = (amount * (BASIS_POINTS_100_PERCENT as u64)) / fund.total_deposits;
         let fraction_to_pay = (closing_profits.balance_minus_fees * percentage) / (BASIS_POINTS_100_PERCENT as u64);     
-
+        
         let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
-        fund_sui_balance.split(fraction_to_pay).into_coin(ctx)                 
+        let to_pay = math::min(fraction_to_pay, fund_sui_balance.value());
+        fund_sui_balance.split(to_pay).into_coin(ctx)                 
     }    
 
 

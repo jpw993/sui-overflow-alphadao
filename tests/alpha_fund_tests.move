@@ -24,28 +24,28 @@ module alpha_dao::alpha_fund_tests {
 
         // take investment deposit from INVESTOR_1
         scenario.next_tx(INVESTOR_1);
-        {        
+        let investor_1_desposit = {        
             let mut fund = scenario.take_shared<Fund>();
             let investor_1_ctx = scenario.ctx();         
             let coin = coin::mint_for_testing<SUI>(10_000, investor_1_ctx);
-            let investor_1_desposit = fund.invest(coin, investor_1_ctx);
-            assert!(investor_1_desposit.get_deposit_amount() == 10_000, 0);
-            assert!(fund.get_total_deposits() == 10_000, 0);
-            test_utils::destroy(investor_1_desposit);
+            let deposit = fund.invest(coin, investor_1_ctx);
+            assert!(deposit.get_deposit_amount() == 10_000, 0);
+            assert!(fund.get_total_deposits() == 10_000, 0);      
             test_scenario::return_shared(fund);
+            deposit
         };        
 
         // take investment deposit from INVESTOR_1
         scenario.next_tx(INVESTOR_2);
-        {
+        let investor_2_desposit = {
             let mut fund = scenario.take_shared<Fund>();  
             let investor_2_ctx = scenario.ctx();         
             let coin = coin::mint_for_testing<SUI>(5_000, investor_2_ctx);
-            let investor_2_desposit = fund.invest(coin, investor_2_ctx);
-            assert!(investor_2_desposit.get_deposit_amount() == 5_000, 0);
-            assert!(fund.get_total_deposits() == 15_000, 0);
-            test_utils::destroy(investor_2_desposit);
+            let deposit = fund.invest(coin, investor_2_ctx);
+            assert!(deposit.get_deposit_amount() == 5_000, 0);
+            assert!(fund.get_total_deposits() == 15_000, 0);           
             test_scenario::return_shared(fund);
+            deposit
         };
 
         scenario.next_tx(MANAGER);
@@ -102,6 +102,27 @@ module alpha_dao::alpha_fund_tests {
             assert!(fees.value() == 1350, 0);            
             test_scenario::return_shared(fund);    
             test_utils::destroy(fees);       
+        };
+
+
+        scenario.next_tx(INVESTOR_1);
+        {            
+            let mut fund = scenario.take_shared<Fund>(); 
+            let investment_return = fund.collect_investment(investor_1_desposit, scenario.ctx());
+            debug::print(&investment_return.value());
+            assert!(investment_return.value() == 18_998, 0);            
+            test_scenario::return_shared(fund);    
+            test_utils::destroy(investment_return);       
+        };
+
+        scenario.next_tx(INVESTOR_2);
+        {            
+            let mut fund = scenario.take_shared<Fund>(); 
+            let investment_return = fund.collect_investment(investor_2_desposit, scenario.ctx());
+            debug::print(&investment_return.value());
+            assert!(investment_return.value() == 9_427, 0);            
+            test_scenario::return_shared(fund);    
+            test_utils::destroy(investment_return);       
         };
 
 
