@@ -16,44 +16,58 @@ module alpha_dao::alpha_fund_tests {
 
     #[test]
     fun test_alpha_fund() {
-        let mut scenario = test_scenario::begin(MANAGER);        
-        let manager_ctx = scenario.ctx();        
-        let fee: u16 = 300;
-        // create fund
-        let (mut fund, manager_cap) = alpha_fund::new_for_testing(fee, manager_ctx);
-
-        assert!(fund.get_manager() == manager_ctx.sender(), 0);
-        assert!(fund.get_trader_allocation(fund.get_manager()).extract() == 0, 0);
+        let mut scenario = test_scenario::begin(MANAGER);
+         
+        let manager_cap = alpha_fund::new(300, scenario.ctx());     
 
         // take investment deposit from INVESTOR_1
         scenario.next_tx(INVESTOR_1);
-        let investor_1_ctx = scenario.ctx();
-        let coin = coin::mint_for_testing<SUI>(10_000, investor_1_ctx);
-        fund.invest(coin, investor_1_ctx);
-        assert!(fund.get_investor_despoit(INVESTOR_1).extract() == 10_000, 0);
-        assert!(fund.get_trader_allocation(fund.get_manager()).extract() == 10_000, 0);
+        {        
+            let mut fund = scenario.take_shared<Fund>();
+            let investor_1_ctx = scenario.ctx();         
+            let coin = coin::mint_for_testing<SUI>(10_000, investor_1_ctx);
+            let investor_1_desposit = fund.invest(coin, investor_1_ctx);
+            assert!(investor_1_desposit.get_deposit_amount() == 10_000, 0);
+            assert!(fund.get_total_deposits() == 10_000, 0);
+            test_utils::destroy(investor_1_desposit);
+            test_scenario::return_shared(fund);
+        };        
 
         // take investment deposit from INVESTOR_1
         scenario.next_tx(INVESTOR_2);
-        let investor_2_ctx = scenario.ctx();
-        let coin = coin::mint_for_testing<SUI>(5_000, investor_2_ctx);
-        fund.invest(coin, investor_2_ctx);
-        assert!(fund.get_investor_despoit(INVESTOR_2).extract() == 5_000, 0);
-        assert!(fund.get_trader_allocation(fund.get_manager()).extract() == 15_000, 0);
-        assert!(fund.get_total_deposits() == 15_000, 0);
+        {
+            let mut fund = scenario.take_shared<Fund>();  
+            let investor_2_ctx = scenario.ctx();         
+            let coin = coin::mint_for_testing<SUI>(5_000, investor_2_ctx);
+            let investor_2_desposit = fund.invest(coin, investor_2_ctx);
+            assert!(investor_2_desposit.get_deposit_amount() == 5_000, 0);
+            assert!(fund.get_total_deposits() == 15_000, 0);
+            test_utils::destroy(investor_2_desposit);
+            test_scenario::return_shared(fund);
+        };
 
-        // allocate capital to TRADER_1
-        fund.allocate_to_trader(&manager_cap, TRADER_1, 1_000);
-        assert!(fund.get_trader_allocation(TRADER_1).extract() == 1_000, 0);
-        assert!(fund.get_trader_allocation(fund.get_manager()).extract() == 14_000, 0);
+        scenario.next_tx(MANAGER);
+        {
+            let mut fund = scenario.take_shared<Fund>();  
+            let manager_ctx = scenario.ctx();                   
 
-        // allocate capital to TRADER_2
-        fund.allocate_to_trader(&manager_cap, TRADER_2, 6_000);
-        assert!(fund.get_trader_allocation(TRADER_2).extract() == 6_000, 0);
-        assert!(fund.get_trader_allocation(fund.get_manager()).extract() == 8_000, 0);
-   
-        fund.delete(manager_cap);  
+            // allocate capital to TRADER_1
+            let trader_1_alloc = fund.allocate_to_trader_for_testing(&manager_cap, TRADER_1, 1_000, manager_ctx);
+            assert!(trader_1_alloc.get_allocation_amount() == 1_000, 0);
+            assert!(fund.get_unallocated_capital() == 14_000, 0);
+            test_utils::destroy(trader_1_alloc);
+            
+            // allocate capital to TRADER_2
+            let trader_2_alloc = fund.allocate_to_trader_for_testing(&manager_cap, TRADER_2, 6_000, manager_ctx);
+            assert!(trader_2_alloc.get_allocation_amount()  == 6_000, 0);
+            assert!(fund.get_unallocated_capital() == 8_000, 0);
+            test_utils::destroy(trader_2_alloc);
 
+            test_utils::destroy(fund); 
+        };
+
+        test_utils::destroy(manager_cap); 
         scenario.end();
     }
+
 }

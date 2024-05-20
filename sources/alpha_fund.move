@@ -12,7 +12,7 @@ module alpha_dao::alpha_fund {
     const ENotTrading: u64 = 3;
     const EStilHasBalance: u64 = 4;
     const ENotAllocationOfThisFund: u64 = 5;
-    const ENotDepositfThisFund: u64 = 6;
+    const ENotDepositOfThisFund: u64 = 6;
     const ENotClosed: u64 = 7;
     const ENotSuiAllocation: u64 = 8;
 
@@ -54,11 +54,23 @@ module alpha_dao::alpha_fund {
         amount: u64
     }
 
+    public fun get_deposit_amount(investor_deposit: &InvestorDeposit): u64 {
+        investor_deposit.amount
+    }
+
     public struct TraderAllocation has key, store { 
         id: UID,
         fund_id: ID,
         coin_id: u64,       
         amount: u64
+    }
+
+    public fun get_coin_id(trader_allocation: &TraderAllocation): u64 {
+        trader_allocation.coin_id
+    }
+
+    public fun get_allocation_amount(trader_allocation: &TraderAllocation): u64 {
+        trader_allocation.amount
     }
 
     /// Create a new fund.
@@ -221,32 +233,29 @@ module alpha_dao::alpha_fund {
         assert!(allocation_percent > 0, ENotSuiAllocation);
 
         let collected_fee = (closing_profits.performance_fees * allocation_percent) / (BASIS_POINTS_100_PERCENT as u64);
-        let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
 
+        let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
         fund_sui_balance.split(collected_fee).into_coin(ctx)                 
     }
 
-    public fun delete(fund: Fund, manager_cap: FundManagerCap) {
-       let FundManagerCap {id: manager_cap_id, fund_id: manager_cap_fund_id} = manager_cap;
-    
-       let Fund {
-            id: id,
-            balances: _balances,
-            performance_fee: _fee_percentage,       
-            state: _state,      
-            total_deposits: _total_deposits,
-            unallocated_capital: _unallocated_capital,
-            closing_profits: _closing_profits
-        } = fund;
+    public fun collect_investment(fund: &mut Fund, investor_deposit: InvestorDeposit, ctx: &mut TxContext): Coin<SUI> {    
+        assert!(fund.state == STATE_CLOSED, ENotClosed);
 
-        assert!(id.to_inner() == manager_cap_fund_id, ENotManagerOfThisFund);
+        let InvestorDeposit {id: id, fund_id: fund_id, amount: amount} = investor_deposit;   
+        id.delete();  
+
+        assert!(fund.id.to_inner() == fund_id, ENotDepositOfThisFund);
+
+        let closing_profits = fund.closing_profits.extract();
+
+        assert!(closing_profits.balance_minus_fees > 0, ENotSuiAllocation);   
+          
+        let percentage = (amount * (BASIS_POINTS_100_PERCENT as u64)) / fund.total_deposits;
+        let fraction_to_pay = (closing_profits.balance_minus_fees * percentage) / (BASIS_POINTS_100_PERCENT as u64);     
 
         let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
-        assert!(fund_sui_balance.value() == 0, EStilHasBalance);       
-         
-        manager_cap_id.delete();   
-        id.delete();      
-    }
+        fund_sui_balance.split(fraction_to_pay).into_coin(ctx)                 
+    }    
 
 
     public fun get_state(fund: &Fund): u8 {
@@ -257,7 +266,11 @@ module alpha_dao::alpha_fund {
         fund.total_deposits
     }
 
-    public fun get_balance(fund: &Fund): u64 {
+     public fun get_unallocated_capital(fund: &Fund): u64 {
+        fund.unallocated_capital
+    }
+
+    public fun get_sui_balance(fund: &Fund): u64 {
         let fund_sui_balance: &Balance<SUI> = &fund.balances[0];
         fund_sui_balance.value()
     }
