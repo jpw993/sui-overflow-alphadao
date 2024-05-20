@@ -225,7 +225,7 @@ module alpha_dao::alpha_fund {
         assert!(fund.id.to_inner() == fund_id, ENotAllocationOfThisFund);
         assert!(coin_id == 0, ENotSuiAllocation);
 
-        let closing_profits = fund.closing_profits.extract();
+        let closing_profits = fund.closing_profits.borrow();
 
         assert!(closing_profits.performance_fees > 0, ENotSuiAllocation);   
           
