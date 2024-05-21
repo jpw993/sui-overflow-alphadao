@@ -4,16 +4,16 @@ module sui_fund_dao::sui_fund_tests {
     use sui::test_utils;
     use sui::test_scenario;
     use sui::sui::SUI;
-    use sui::coin::{Self, Coin};
+    use sui::coin;
     use std::debug;
 
     const MANAGER: address = @0x1;
     const INVESTOR_1: address = @0x2;
     const INVESTOR_2: address = @0x3;
-    const INVESTOR_3: address = @0x4;
+    //const INVESTOR_3: address = @0x4;
     const TRADER_1: address = @0x5;
     const TRADER_2: address = @0x6;
-    const TRADER_3: address = @0x7;
+    //const TRADER_3: address = @0x7;
 
     #[test]
     fun test_alpha_fund() {
@@ -87,7 +87,7 @@ module sui_fund_dao::sui_fund_tests {
         scenario.next_tx(TRADER_1);
         {            
             let mut fund = scenario.take_shared<Fund>(); 
-            let fees = fund.collect_fee(trader_1_alloc, scenario.ctx());
+            let fees = fund.collect_fee_for_testing(trader_1_alloc, scenario.ctx());
             debug::print(&fees.value());
             assert!(fees.value() == 225, 0);            
             test_scenario::return_shared(fund);    
@@ -97,7 +97,7 @@ module sui_fund_dao::sui_fund_tests {
         scenario.next_tx(TRADER_2);
         {            
             let mut fund = scenario.take_shared<Fund>(); 
-            let fees = fund.collect_fee(trader_2_alloc, scenario.ctx());
+            let fees = fund.collect_fee_for_testing(trader_2_alloc, scenario.ctx());
             debug::print(&fees.value());
             assert!(fees.value() == 1350, 0);            
             test_scenario::return_shared(fund);    
@@ -108,7 +108,7 @@ module sui_fund_dao::sui_fund_tests {
         scenario.next_tx(INVESTOR_1);
         {            
             let mut fund = scenario.take_shared<Fund>(); 
-            let investment_return = fund.collect_investment(investor_1_desposit, scenario.ctx());
+            let investment_return = fund.collect_investment_for_testing(investor_1_desposit, scenario.ctx());
             debug::print(&investment_return.value());
             assert!(investment_return.value() == 18_998, 0);            
             test_scenario::return_shared(fund);    
@@ -118,7 +118,7 @@ module sui_fund_dao::sui_fund_tests {
         scenario.next_tx(INVESTOR_2);
         {            
             let mut fund = scenario.take_shared<Fund>(); 
-            let investment_return = fund.collect_investment(investor_2_desposit, scenario.ctx());
+            let investment_return = fund.collect_investment_for_testing(investor_2_desposit, scenario.ctx());
             debug::print(&investment_return.value());
             assert!(investment_return.value() == 9_427, 0);            
             test_scenario::return_shared(fund);    

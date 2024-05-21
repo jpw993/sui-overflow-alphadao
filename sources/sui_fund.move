@@ -169,7 +169,7 @@ module sui_fund_dao::sui_fund {
         investor_deposit
     }
 
-    public fun get_profit(fund: &Fund): u64 {
+    public entry fun get_profit(fund: &Fund): u64 {
         let fund_sui_balance: &Balance<SUI> = &fund.balances[0];
         if (fund_sui_balance.value() <= fund.total_deposits){
             0
@@ -244,7 +244,33 @@ module sui_fund_dao::sui_fund {
         fund.state = STATE_CLOSED;
     }
 
-    public fun collect_fee(fund: &mut Fund, trader_allocation: TraderAllocation, ctx: &mut TxContext): Coin<SUI> {    
+    public entry fun collect_fee(fund: &mut Fund, trader_allocation: TraderAllocation, ctx: &mut TxContext) {    
+        assert!(fund.state == STATE_CLOSED, ENotClosed);
+
+        let TraderAllocation {id: id, fund_id: fund_id, coin_id: coin_id, amount: amount} = trader_allocation;   
+        id.delete();  
+
+        assert!(fund.id.to_inner() == fund_id, ENotAllocationOfThisFund);
+        assert!(coin_id == 0, ENotSuiAllocation);
+
+        let closing_profits = fund.closing_profits.borrow();
+
+        assert!(closing_profits.performance_fees > 0, ENotSuiAllocation);   
+          
+        let allocation_percent = (amount * fund.total_deposits) / (BASIS_POINTS_100_PERCENT as u64);
+        assert!(allocation_percent > 0, ENotSuiAllocation);
+
+        let collected_fee = (closing_profits.performance_fees * allocation_percent) / (BASIS_POINTS_100_PERCENT as u64);
+
+        let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
+        let to_pay = math::min(collected_fee, fund_sui_balance.value());
+        let coin_to_pay = fund_sui_balance.split(to_pay).into_coin(ctx);
+
+        transfer::public_transfer(coin_to_pay, ctx.sender());                 
+    }
+
+    #[test_only]
+    public fun collect_fee_for_testing(fund: &mut Fund, trader_allocation: TraderAllocation, ctx: &mut TxContext): Coin<SUI> {    
         assert!(fund.state == STATE_CLOSED, ENotClosed);
 
         let TraderAllocation {id: id, fund_id: fund_id, coin_id: coin_id, amount: amount} = trader_allocation;   
@@ -267,7 +293,30 @@ module sui_fund_dao::sui_fund {
         fund_sui_balance.split(to_pay).into_coin(ctx)                 
     }
 
-    public fun collect_investment(fund: &mut Fund, investor_deposit: InvestorDeposit, ctx: &mut TxContext): Coin<SUI> {    
+    public entry fun collect_investment(fund: &mut Fund, investor_deposit: InvestorDeposit, ctx: &mut TxContext) {    
+        assert!(fund.state == STATE_CLOSED, ENotClosed);
+
+        let InvestorDeposit {id: id, fund_id: fund_id, amount: amount} = investor_deposit;   
+        id.delete();  
+
+        assert!(fund.id.to_inner() == fund_id, ENotDepositOfThisFund);
+
+        let closing_profits = fund.closing_profits.borrow();
+
+        assert!(closing_profits.balance_minus_fees > 0, ENotSuiAllocation);   
+          
+        let percentage = (amount * (BASIS_POINTS_100_PERCENT as u64)) / fund.total_deposits;
+        let fraction_to_pay = (closing_profits.balance_minus_fees * percentage) / (BASIS_POINTS_100_PERCENT as u64);     
+        
+        let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
+        let to_pay = math::min(fraction_to_pay, fund_sui_balance.value());
+        let coin_to_pay = fund_sui_balance.split(to_pay).into_coin(ctx);
+
+        transfer::public_transfer(coin_to_pay, ctx.sender());          
+    }    
+
+    #[test_only]
+    public fun collect_investment_for_testing(fund: &mut Fund, investor_deposit: InvestorDeposit, ctx: &mut TxContext): Coin<SUI> {    
         assert!(fund.state == STATE_CLOSED, ENotClosed);
 
         let InvestorDeposit {id: id, fund_id: fund_id, amount: amount} = investor_deposit;   
@@ -288,19 +337,19 @@ module sui_fund_dao::sui_fund {
     }    
 
 
-    public fun get_state(fund: &Fund): u8 {
+    public entry fun get_state(fund: &Fund): u8 {
         fund.state
     }
 
-    public fun get_total_deposits(fund: &Fund): u64 {
+    public entry fun get_total_deposits(fund: &Fund): u64 {
         fund.total_deposits
     }
 
-     public fun get_unallocated_capital(fund: &Fund): u64 {
+     public entry fun get_unallocated_capital(fund: &Fund): u64 {
         fund.unallocated_capital
     }
 
-    public fun get_sui_balance(fund: &Fund): u64 {
+    public entry fun get_sui_balance(fund: &Fund): u64 {
         let fund_sui_balance: &Balance<SUI> = &fund.balances[0];
         fund_sui_balance.value()
     }
@@ -440,6 +489,5 @@ module sui_fund_dao::sui_fund {
         fund.balances.add(trader_allocation.coin_id, coin_a.into_balance());
         fund.balances.add(coin_b_id, coin_b_bal);        
     }
-
 
 }
