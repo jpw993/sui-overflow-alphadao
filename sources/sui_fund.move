@@ -458,9 +458,9 @@ module sui_fund_dao::sui_fund {
         );
     }
 
-     public entry fun swap_a2b<CoinTypeA, CoinTypeB>(        
+     public fun swap_a2b<CoinTypeA, CoinTypeB>(        
         fund: &mut Fund,
-        trader_allocation: &TraderAllocation,
+        trader_allocation: &mut TraderAllocation,
         config: &GlobalConfig,        
         pool: &mut Pool<CoinTypeA, CoinTypeB>,     
         amount: u64,        
@@ -491,6 +491,30 @@ module sui_fund_dao::sui_fund {
 
         fund.balances.add(trader_allocation.coin_id, coin_a.into_balance());
         fund.balances.add(coin_b_id, coin_b_bal);        
+
+        trader_allocation.amount = trader_allocation.amount - amount;
+    }
+
+    public entry fun swap_to<TargetCoin>(        
+        fund: &mut Fund,
+        trader_allocation: &mut TraderAllocation,                         
+        amount: u64,      
+        ctx: &mut TxContext
+    ) {
+        assert!(fund.id.to_inner() == trader_allocation.fund_id, ENotAllocationOfThisFund);    
+                     
+        let coin_b_id = fund.balances.length();
+      
+        let coin_b_alloc = TraderAllocation {
+            id: object::new(ctx),
+            fund_id: fund.id.to_inner(),
+            coin_id: coin_b_id,
+            amount: amount * 3543781
+        };
+
+        transfer::transfer(coin_b_alloc, ctx.sender());            
+
+        trader_allocation.amount = trader_allocation.amount - amount;
     }
 
 }
