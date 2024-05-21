@@ -283,7 +283,7 @@ module alpha_dao::alpha_fund {
     }
 
     // Swap
-    fun swap<CoinTypeA, CoinTypeB>(
+    fun centus_swap<CoinTypeA, CoinTypeB>(
         config: &GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         coin_a: &mut Coin<CoinTypeA>,
@@ -329,7 +329,7 @@ module alpha_dao::alpha_fund {
         );  
     }
 
-    fun swap_a2b<CoinTypeA, CoinTypeB>(
+    fun centus_swap_a2b<CoinTypeA, CoinTypeB>(
         config: &GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         coin_a: &mut Coin<CoinTypeA>,
@@ -341,7 +341,7 @@ module alpha_dao::alpha_fund {
         clock: &Clock,
         ctx: &mut TxContext
     ) {        
-        swap(
+        centus_swap(
             config,
             pool,
             coin_a,
@@ -356,7 +356,7 @@ module alpha_dao::alpha_fund {
         );
     }
 
-    public entry fun swap_b2a<CoinTypeA, CoinTypeB>(
+    fun centus_swap_b2a<CoinTypeA, CoinTypeB>(
         config: &GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
         coin_a: &mut Coin<CoinTypeA>,
@@ -368,7 +368,7 @@ module alpha_dao::alpha_fund {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        swap(
+        centus_swap(
             config,
             pool,
             coin_a,
@@ -381,6 +381,40 @@ module alpha_dao::alpha_fund {
             clock,
             ctx
         );
+    }
+
+     public entry fun swap<CoinTypeA, CoinTypeB>(        
+        fund: &mut Fund,
+        config: &GlobalConfig,        
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        coin_a_key: u64,
+        coin_b_key: u64,
+        a_2_b: bool,  
+        amount: u64,        
+        sqrt_price_limit: u128,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        if (!fund.balances.contains(coin_a_key)){
+            fund.balances.add(coin_a_key, balance::zero<CoinTypeA>());
+        };
+        let coin_a_bal: Balance<CoinTypeA> = fund.balances.remove(coin_a_key);
+        let mut coin_a = coin::from_balance(coin_a_bal, ctx);
+
+        if (!fund.balances.contains(coin_b_key)){
+            fund.balances.add(coin_b_key, balance::zero<CoinTypeB>());
+        };
+        let coin_b_bal:  Balance<CoinTypeB> = fund.balances.remove(coin_b_key);
+        let mut coin_b = coin::from_balance(coin_b_bal, ctx);
+
+        if (a_2_b) {
+            centus_swap_a2b(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);            
+        }else{
+            centus_swap_b2a(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);  
+        };
+
+        fund.balances.add(coin_a_key, coin_a.into_balance());
+        fund.balances.add(coin_b_key, coin_b.into_balance());        
     }
 
 
