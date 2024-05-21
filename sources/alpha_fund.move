@@ -6,9 +6,7 @@ module alpha_dao::alpha_fund {
     use sui::bag::{Self, Bag};
     use sui::math;
     use sui::clock::{Clock};
-
-    use cetus_clmm::config::GlobalConfig;
-    use cetus_clmm::pool::{Self, Pool};
+    use sui::event;
 
     /// Error code for unauthorized access.
     const ENotManagerOfThisFund: u64 = 0;
@@ -79,7 +77,7 @@ module alpha_dao::alpha_fund {
     }
 
     /// Create a new fund.
-    public fun new(fee_percentage: u16, ctx: &mut TxContext): FundManagerCap {     
+    public entry fun new(fee_percentage: u16, ctx: &mut TxContext) {     
         let mut balances = bag::new(ctx);
         balances.add(0, balance::zero<SUI>());
 
@@ -98,9 +96,9 @@ module alpha_dao::alpha_fund {
             fund_id: fund.id.to_inner()
         };
 
-        transfer::share_object(fund);
+        transfer::transfer(fund_manager_cap, ctx.sender());
 
-        fund_manager_cap
+        transfer::share_object(fund); 
     }
 
     #[test_only]
@@ -281,140 +279,17 @@ module alpha_dao::alpha_fund {
         let fund_sui_balance: &Balance<SUI> = &fund.balances[0];
         fund_sui_balance.value()
     }
-
-    // Swap
-    fun centus_swap<CoinTypeA, CoinTypeB>(
-        config: &GlobalConfig,
-        pool: &mut Pool<CoinTypeA, CoinTypeB>,
-        coin_a: &mut Coin<CoinTypeA>,
-        coin_b: &mut Coin<CoinTypeB>,
-        a2b: bool,
-        by_amount_in: bool,
-        amount: u64,
-        _amount_limit: u64,
-        sqrt_price_limit: u128,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let (receive_a, receive_b, flash_receipt) = pool::flash_swap<CoinTypeA, CoinTypeB>(
-            config,
-            pool,
-            a2b,
-            by_amount_in,
-            amount,
-            sqrt_price_limit,
-            clock
-        );
-        let (in_amount, _out_amount) = (
-            pool::swap_pay_amount(&flash_receipt),
-            if (a2b) balance::value(&receive_b) else balance::value(&receive_a)
-        );
-
-        // pay for flash swap
-        let (pay_coin_a, pay_coin_b) = if (a2b) {
-            (coin::into_balance(coin::split(coin_a, in_amount, ctx)), balance::zero<CoinTypeB>())
-        } else {
-            (balance::zero<CoinTypeA>(), coin::into_balance(coin::split(coin_b, in_amount, ctx)))
-        };
-
-        coin::join(coin_b, coin::from_balance(receive_b, ctx));
-        coin::join(coin_a, coin::from_balance(receive_a, ctx));
-
-        pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
-            config,
-            pool,
-            pay_coin_a,
-            pay_coin_b,
-            flash_receipt
-        );  
-    }
-
-    fun centus_swap_a2b<CoinTypeA, CoinTypeB>(
-        config: &GlobalConfig,
-        pool: &mut Pool<CoinTypeA, CoinTypeB>,
-        coin_a: &mut Coin<CoinTypeA>,
-        coin_b: &mut Coin<CoinTypeB>,
-        by_amount_in: bool,
-        amount: u64,
-        amount_limit: u64,
-        sqrt_price_limit: u128,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {        
-        centus_swap(
-            config,
-            pool,
-            coin_a,
-            coin_b,
-            true,
-            by_amount_in,
-            amount,
-            amount_limit,
-            sqrt_price_limit,
-            clock,
-            ctx
-        );
-    }
-
-    fun centus_swap_b2a<CoinTypeA, CoinTypeB>(
-        config: &GlobalConfig,
-        pool: &mut Pool<CoinTypeA, CoinTypeB>,
-        coin_a: &mut Coin<CoinTypeA>,
-        coin_b: &mut Coin<CoinTypeB>,
-        by_amount_in: bool,
-        amount: u64,
-        amount_limit: u64,
-        sqrt_price_limit: u128,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        centus_swap(
-            config,
-            pool,
-            coin_a,
-            coin_b,
-            false,
-            by_amount_in,
-            amount,
-            amount_limit,
-            sqrt_price_limit,
-            clock,
-            ctx
-        );
-    }
-
-     public entry fun swap<CoinTypeA, CoinTypeB>(        
-        fund: &mut Fund,
-        config: &GlobalConfig,        
-        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+    
+     public entry fun swap (        
+        fund: &mut Fund,        
+        pool: address,
         coin_a_key: u64,
-        coin_b_key: u64,
-        a_2_b: bool,  
-        amount: u64,        
+        coin_b_key: u64, 
+        amount: u64,
         sqrt_price_limit: u128,
-        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        if (!fund.balances.contains(coin_a_key)){
-            fund.balances.add(coin_a_key, balance::zero<CoinTypeA>());
-        };
-        let coin_a_bal: Balance<CoinTypeA> = fund.balances.remove(coin_a_key);
-        let mut coin_a = coin::from_balance(coin_a_bal, ctx);
-
-        if (!fund.balances.contains(coin_b_key)){
-            fund.balances.add(coin_b_key, balance::zero<CoinTypeB>());
-        };
-        let coin_b_bal:  Balance<CoinTypeB> = fund.balances.remove(coin_b_key);
-        let mut coin_b = coin::from_balance(coin_b_bal, ctx);
-
-        if (a_2_b) {
-            centus_swap_a2b(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);            
-        }else{
-            centus_swap_b2a(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);  
-        };
-
-        fund.balances.add(coin_a_key, coin_a.into_balance());
-        fund.balances.add(coin_b_key, coin_b.into_balance());        
+               
     }
 
 
