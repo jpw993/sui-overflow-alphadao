@@ -70,11 +70,11 @@ module alpha_dao::alpha_fund {
         amount: u64
     }
 
-    public fun get_coin_id(trader_allocation: &TraderAllocation): u64 {
+    public entry fun get_coin_id(trader_allocation: &TraderAllocation): u64 {
         trader_allocation.coin_id
     }
 
-    public fun get_allocation_amount(trader_allocation: &TraderAllocation): u64 {
+    public entry fun get_allocation_amount(trader_allocation: &TraderAllocation): u64 {
         trader_allocation.amount
     }
 
@@ -155,7 +155,7 @@ module alpha_dao::alpha_fund {
         }
     }
 
-    public fun allocate_to_trader(fund: &mut Fund, manager_cap: &FundManagerCap, trader: address, amt: u64, ctx: &mut TxContext) {
+    public entry fun allocate_to_trader(fund: &mut Fund, manager_cap: &FundManagerCap, trader: address, amt: u64, ctx: &mut TxContext) {
         assert!(fund.state == STATE_OPEN_TO_INVESTORS, ENotOpenToInvestors);        
         assert!(fund.id.to_inner() == manager_cap.fund_id, ENotManagerOfThisFund);
                 
@@ -188,17 +188,17 @@ module alpha_dao::alpha_fund {
         }              
     }
 
-    public fun start_trading(fund: &mut Fund, manager_cap: &FundManagerCap) {
+    public entry fun start_trading(fund: &mut Fund, manager_cap: &FundManagerCap) {
         assert!(fund.id.to_inner() == manager_cap.fund_id, ENotManagerOfThisFund);
         fund.state = STATE_TRADING;
     }
 
-    public fun receive(fund: &mut Fund, coin: Coin<SUI>){
+    public entry fun receive(fund: &mut Fund, coin: Coin<SUI>){
         let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
         fund_sui_balance.join(coin.into_balance());
     }
 
-    public fun close_fund(fund: &mut Fund, manager_cap: &FundManagerCap) {    
+    public entry fun close_fund(fund: &mut Fund, manager_cap: &FundManagerCap) {    
         assert!(fund.state == STATE_TRADING, ENotTrading);
         assert!(fund.id.to_inner() == manager_cap.fund_id, ENotManagerOfThisFund);
 
