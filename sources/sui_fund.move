@@ -1,5 +1,5 @@
-/// Module: alpha_dao
-module alpha_dao::alpha_fund {
+/// Module: sui_fund_dao
+module sui_fund_dao::sui_fund {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -383,38 +383,39 @@ module alpha_dao::alpha_fund {
         );
     }
 
-     public entry fun swap<CoinTypeA, CoinTypeB>(        
+     public entry fun swap_a2b<CoinTypeA, CoinTypeB>(        
         fund: &mut Fund,
+        trader_allocation: &TraderAllocation,
         config: &GlobalConfig,        
-        pool: &mut Pool<CoinTypeA, CoinTypeB>,
-        coin_a_key: u64,
-        coin_b_key: u64,
-        a_2_b: bool,  
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,     
         amount: u64,        
         sqrt_price_limit: u128,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        if (!fund.balances.contains(coin_a_key)){
-            fund.balances.add(coin_a_key, balance::zero<CoinTypeA>());
-        };
-        let coin_a_bal: Balance<CoinTypeA> = fund.balances.remove(coin_a_key);
+        assert!(fund.id.to_inner() == trader_allocation.fund_id, ENotAllocationOfThisFund);
+
+        let coin_a_bal: Balance<CoinTypeA> = fund.balances.remove(trader_allocation.coin_id);
         let mut coin_a = coin::from_balance(coin_a_bal, ctx);
 
-        if (!fund.balances.contains(coin_b_key)){
-            fund.balances.add(coin_b_key, balance::zero<CoinTypeB>());
-        };
-        let coin_b_bal:  Balance<CoinTypeB> = fund.balances.remove(coin_b_key);
-        let mut coin_b = coin::from_balance(coin_b_bal, ctx);
+        let mut coin_b = coin::from_balance(balance::zero<CoinTypeB>(), ctx);
+     
+        centus_swap_a2b(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);            
+    
+        let coin_b_id = fund.balances.length();
+        let coin_b_bal = coin_b.into_balance();
 
-        if (a_2_b) {
-            centus_swap_a2b(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);            
-        }else{
-            centus_swap_b2a(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);  
+        let coin_b_alloc = TraderAllocation {
+            id: object::new(ctx),
+            fund_id: fund.id.to_inner(),
+            coin_id: coin_b_id,
+            amount: coin_b_bal.value()
         };
 
-        fund.balances.add(coin_a_key, coin_a.into_balance());
-        fund.balances.add(coin_b_key, coin_b.into_balance());        
+        transfer::transfer(coin_b_alloc, ctx.sender());
+
+        fund.balances.add(trader_allocation.coin_id, coin_a.into_balance());
+        fund.balances.add(coin_b_id, coin_b_bal);        
     }
 
 

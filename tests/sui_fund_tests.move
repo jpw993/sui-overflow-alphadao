@@ -1,6 +1,6 @@
 #[test_only]
-module alpha_dao::alpha_fund_tests {
-    use alpha_dao::alpha_fund::{Self, Fund};
+module sui_fund_dao::sui_fund_tests {
+    use sui_fund_dao::sui_fund::{Self, Fund};
     use sui::test_utils;
     use sui::test_scenario;
     use sui::sui::SUI;
@@ -20,7 +20,7 @@ module alpha_dao::alpha_fund_tests {
         let mut scenario = test_scenario::begin(MANAGER);
 
         // create fund with 10% performance fee 
-        let manager_cap = alpha_fund::new(1_000, scenario.ctx());     
+        let manager_cap = sui_fund::new(1_000, scenario.ctx());     
 
         // take investment deposit from INVESTOR_1
         scenario.next_tx(INVESTOR_1);
