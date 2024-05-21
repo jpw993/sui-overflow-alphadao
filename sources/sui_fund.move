@@ -128,7 +128,7 @@ module sui_fund_dao::sui_fund {
         fund_manager_cap
     }
 
-    public fun invest(fund: &mut Fund, investment: Coin<SUI>, ctx: &mut TxContext): InvestorDeposit {
+    public entry fun invest(fund: &mut Fund, investment: Coin<SUI>, ctx: &mut TxContext) {
         assert!(fund.state == STATE_OPEN_TO_INVESTORS, ENotOpenToInvestors);
 
         let investment_balance = investment.into_balance();           
@@ -139,12 +139,33 @@ module sui_fund_dao::sui_fund {
             amount: investment_balance.value()
         };
 
+        transfer::transfer(investor_deposit, ctx.sender());
+
         fund.total_deposits = fund.total_deposits + investment_balance.value();
         fund.unallocated_capital = fund.unallocated_capital + investment_balance.value();
 
         let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
-        fund_sui_balance.join(investment_balance);             
-      
+        fund_sui_balance.join(investment_balance);                  
+    }
+
+    #[test_only]
+    public fun invest_for_testing(fund: &mut Fund, investment: Coin<SUI>, ctx: &mut TxContext): InvestorDeposit {
+        assert!(fund.state == STATE_OPEN_TO_INVESTORS, ENotOpenToInvestors);
+
+        let investment_balance = investment.into_balance();           
+
+        let investor_deposit = InvestorDeposit {
+            id: object::new(ctx),
+            fund_id: fund.id.to_inner(),
+            amount: investment_balance.value()
+        };    
+
+        fund.total_deposits = fund.total_deposits + investment_balance.value();
+        fund.unallocated_capital = fund.unallocated_capital + investment_balance.value();
+
+        let fund_sui_balance: &mut Balance<SUI> = &mut fund.balances[0];
+        fund_sui_balance.join(investment_balance);                  
+
         investor_deposit
     }
 

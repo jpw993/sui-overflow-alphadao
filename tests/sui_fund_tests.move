@@ -28,7 +28,7 @@ module sui_fund_dao::sui_fund_tests {
             let mut fund = scenario.take_shared<Fund>();
             let investor_1_ctx = scenario.ctx();         
             let coin = coin::mint_for_testing<SUI>(10_000, investor_1_ctx);
-            let deposit = fund.invest(coin, investor_1_ctx);
+            let deposit = fund.invest_for_testing(coin, investor_1_ctx);
             assert!(deposit.get_deposit_amount() == 10_000, 0);
             assert!(fund.get_total_deposits() == 10_000, 0);      
             test_scenario::return_shared(fund);
@@ -41,7 +41,7 @@ module sui_fund_dao::sui_fund_tests {
             let mut fund = scenario.take_shared<Fund>();  
             let investor_2_ctx = scenario.ctx();         
             let coin = coin::mint_for_testing<SUI>(5_000, investor_2_ctx);
-            let deposit = fund.invest(coin, investor_2_ctx);
+            let deposit = fund.invest_for_testing(coin, investor_2_ctx);
             assert!(deposit.get_deposit_amount() == 5_000, 0);
             assert!(fund.get_total_deposits() == 15_000, 0);           
             test_scenario::return_shared(fund);
