@@ -10,7 +10,7 @@ module sui_fund_dao::sui_fund {
     use cetus_clmm::config::GlobalConfig;
     use cetus_clmm::pool::{Self, Pool};
 
-    /// Error code for unauthorized access.
+    // error codes
     const ENotManagerOfThisFund: u64 = 0;
     const ENotEoughCapitalAllocation: u64 = 1;
     const ENotOpenToInvestors: u64 = 2;
@@ -128,8 +128,10 @@ module sui_fund_dao::sui_fund {
         fund_manager_cap
     }
 
-    public entry fun invest(fund: &mut Fund, investment: Coin<SUI>, ctx: &mut TxContext) {
+    public entry fun invest(fund: &mut Fund, coin: &mut Coin<SUI>, amount: u64, ctx: &mut TxContext) {
         assert!(fund.state == STATE_OPEN_TO_INVESTORS, ENotOpenToInvestors);
+
+        let investment = coin.split(amount, ctx);
 
         let investment_balance = investment.into_balance();           
 
@@ -354,7 +356,8 @@ module sui_fund_dao::sui_fund {
         fund_sui_balance.value()
     }
 
-    // Swap
+    // *** Centus Swap functions *** 
+
     fun centus_swap<CoinTypeA, CoinTypeB>(
         config: &GlobalConfig,
         pool: &mut Pool<CoinTypeA, CoinTypeB>,
