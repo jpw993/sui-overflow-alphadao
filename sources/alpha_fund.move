@@ -1,17 +1,21 @@
 /// Module: alpha_dao
 module alpha_dao::alpha_fund {
     use sui::balance::{Self, Balance};
-    use sui::coin::Coin;
+    use sui::coin::{Self, Coin};
     use sui::sui::SUI;
     use sui::bag::{Self, Bag};
     use sui::math;
+    use sui::clock::{Clock};
+
+    use cetus_clmm::config::GlobalConfig;
+    use cetus_clmm::pool::{Self, Pool};
 
     /// Error code for unauthorized access.
     const ENotManagerOfThisFund: u64 = 0;
     const ENotEoughCapitalAllocation: u64 = 1;
     const ENotOpenToInvestors: u64 = 2;
     const ENotTrading: u64 = 3;
-    const EStilHasBalance: u64 = 4;
+    // const EStilHasBalance: u64 = 4;
     const ENotAllocationOfThisFund: u64 = 5;
     const ENotDepositOfThisFund: u64 = 6;
     const ENotClosed: u64 = 7;
@@ -277,5 +281,107 @@ module alpha_dao::alpha_fund {
         let fund_sui_balance: &Balance<SUI> = &fund.balances[0];
         fund_sui_balance.value()
     }
+
+    // Swap
+    fun swap<CoinTypeA, CoinTypeB>(
+        config: &GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        coin_a: &mut Coin<CoinTypeA>,
+        coin_b: &mut Coin<CoinTypeB>,
+        a2b: bool,
+        by_amount_in: bool,
+        amount: u64,
+        _amount_limit: u64,
+        sqrt_price_limit: u128,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let (receive_a, receive_b, flash_receipt) = pool::flash_swap<CoinTypeA, CoinTypeB>(
+            config,
+            pool,
+            a2b,
+            by_amount_in,
+            amount,
+            sqrt_price_limit,
+            clock
+        );
+        let (in_amount, _out_amount) = (
+            pool::swap_pay_amount(&flash_receipt),
+            if (a2b) balance::value(&receive_b) else balance::value(&receive_a)
+        );
+
+        // pay for flash swap
+        let (pay_coin_a, pay_coin_b) = if (a2b) {
+            (coin::into_balance(coin::split(coin_a, in_amount, ctx)), balance::zero<CoinTypeB>())
+        } else {
+            (balance::zero<CoinTypeA>(), coin::into_balance(coin::split(coin_b, in_amount, ctx)))
+        };
+
+        coin::join(coin_b, coin::from_balance(receive_b, ctx));
+        coin::join(coin_a, coin::from_balance(receive_a, ctx));
+
+        pool::repay_flash_swap<CoinTypeA, CoinTypeB>(
+            config,
+            pool,
+            pay_coin_a,
+            pay_coin_b,
+            flash_receipt
+        );  
+    }
+
+    fun swap_a2b<CoinTypeA, CoinTypeB>(
+        config: &GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        coin_a: &mut Coin<CoinTypeA>,
+        coin_b: &mut Coin<CoinTypeB>,
+        by_amount_in: bool,
+        amount: u64,
+        amount_limit: u64,
+        sqrt_price_limit: u128,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {        
+        swap(
+            config,
+            pool,
+            coin_a,
+            coin_b,
+            true,
+            by_amount_in,
+            amount,
+            amount_limit,
+            sqrt_price_limit,
+            clock,
+            ctx
+        );
+    }
+
+    public entry fun swap_b2a<CoinTypeA, CoinTypeB>(
+        config: &GlobalConfig,
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,
+        coin_a: &mut Coin<CoinTypeA>,
+        coin_b: &mut Coin<CoinTypeB>,
+        by_amount_in: bool,
+        amount: u64,
+        amount_limit: u64,
+        sqrt_price_limit: u128,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        swap(
+            config,
+            pool,
+            coin_a,
+            coin_b,
+            false,
+            by_amount_in,
+            amount,
+            amount_limit,
+            sqrt_price_limit,
+            clock,
+            ctx
+        );
+    }
+
 
 }
