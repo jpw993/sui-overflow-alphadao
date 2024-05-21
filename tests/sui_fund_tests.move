@@ -20,7 +20,7 @@ module sui_fund_dao::sui_fund_tests {
         let mut scenario = test_scenario::begin(MANAGER);
 
         // create fund with 10% performance fee 
-        let manager_cap = sui_fund::new(1_000, scenario.ctx());     
+        let manager_cap = sui_fund::new_for_testing(1_000, scenario.ctx());     
 
         // take investment deposit from INVESTOR_1
         scenario.next_tx(INVESTOR_1);

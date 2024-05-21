@@ -59,7 +59,7 @@ module sui_fund_dao::sui_fund {
         amount: u64
     }
 
-    public fun get_deposit_amount(investor_deposit: &InvestorDeposit): u64 {
+    public entry fun get_deposit_amount(investor_deposit: &InvestorDeposit): u64 {
         investor_deposit.amount
     }
 
@@ -79,7 +79,7 @@ module sui_fund_dao::sui_fund {
     }
 
     /// Create a new fund.
-    public fun new(fee_percentage: u16, ctx: &mut TxContext): FundManagerCap {     
+    public entry fun new(fee_percentage: u16, ctx: &mut TxContext) {     
         let mut balances = bag::new(ctx);
         balances.add(0, balance::zero<SUI>());
 
@@ -98,14 +98,14 @@ module sui_fund_dao::sui_fund {
             fund_id: fund.id.to_inner()
         };
 
-        transfer::share_object(fund);
+        transfer::transfer(fund_manager_cap, ctx.sender());
 
-        fund_manager_cap
+        transfer::share_object(fund);       
     }
 
     #[test_only]
-    public fun new_for_testing(fee_percentage: u16, ctx: &mut TxContext): (Fund, FundManagerCap) {
-          let mut balances = bag::new(ctx);
+    public fun new_for_testing(fee_percentage: u16, ctx: &mut TxContext): FundManagerCap {
+        let mut balances = bag::new(ctx);
         balances.add(0, balance::zero<SUI>());
 
         let fund = Fund {
@@ -123,7 +123,9 @@ module sui_fund_dao::sui_fund {
             fund_id: fund.id.to_inner()
         };
 
-        (fund, fund_manager_cap)
+        transfer::share_object(fund);    
+
+        fund_manager_cap
     }
 
     public fun invest(fund: &mut Fund, investment: Coin<SUI>, ctx: &mut TxContext): InvestorDeposit {
