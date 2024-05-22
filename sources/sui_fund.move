@@ -24,7 +24,7 @@ module sui_fund_dao::sui_fund {
     // fund states
     const STATE_OPEN_TO_INVESTORS: u8 = 0;
     const STATE_TRADING: u8 = 1; 
-    const STATE_CLOSED: u8 = 1; 
+    const STATE_CLOSED: u8 = 2; 
 
     const BASIS_POINTS_100_PERCENT: u16 = 10_000;
     
@@ -339,19 +339,19 @@ module sui_fund_dao::sui_fund {
     }    
 
 
-    public entry fun get_state(fund: &Fund): u8 {
+    public fun get_state(fund: &Fund): u8 {
         fund.state
     }
 
-    public entry fun get_total_deposits(fund: &Fund): u64 {
+    public fun get_total_deposits(fund: &Fund): u64 {
         fund.total_deposits
     }
 
-     public entry fun get_unallocated_capital(fund: &Fund): u64 {
+     public fun get_unallocated_capital(fund: &Fund): u64 {
         fund.unallocated_capital
     }
 
-    public entry fun get_sui_balance(fund: &Fund): u64 {
+    public fun get_sui_balance(fund: &Fund): u64 {
         let fund_sui_balance: &Balance<SUI> = &fund.balances[0];
         fund_sui_balance.value()
     }
@@ -495,9 +495,12 @@ module sui_fund_dao::sui_fund {
         trader_allocation.amount = trader_allocation.amount - amount;
     }
 
-    public entry fun swap_to<TargetCoin>(        
+    use std::string::{Self, String};
+
+    public entry fun swap_to(        
         fund: &mut Fund,
-        trader_allocation: &mut TraderAllocation,                         
+        trader_allocation: &mut TraderAllocation, 
+        coin_type: String,                          
         amount: u64,      
         ctx: &mut TxContext
     ) {
