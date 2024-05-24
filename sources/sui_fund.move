@@ -458,7 +458,7 @@ module sui_fund_dao::sui_fund {
         );
     }
 
-     public fun swap_a2b<CoinTypeA, CoinTypeB>(        
+     public entry fun swap_a2b<CoinTypeA, CoinTypeB>(        
         fund: &mut Fund,
         trader_allocation: &mut TraderAllocation,
         config: &GlobalConfig,        
@@ -495,29 +495,41 @@ module sui_fund_dao::sui_fund {
         trader_allocation.amount = trader_allocation.amount - amount;
     }
 
-    use std::string::{Self, String};
-
-    public entry fun swap_to(        
+     public entry fun swap_b2a<CoinTypeA, CoinTypeB>(        
         fund: &mut Fund,
-        trader_allocation: &mut TraderAllocation, 
-        coin_type: String,                          
-        amount: u64,      
+        trader_allocation: &mut TraderAllocation,
+        config: &GlobalConfig,        
+        pool: &mut Pool<CoinTypeA, CoinTypeB>,     
+        amount: u64,        
+        sqrt_price_limit: u128,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(fund.id.to_inner() == trader_allocation.fund_id, ENotAllocationOfThisFund);    
-                     
-        let coin_b_id = fund.balances.length();
-      
-        let coin_b_alloc = TraderAllocation {
+        assert!(fund.id.to_inner() == trader_allocation.fund_id, ENotAllocationOfThisFund);
+
+        let coin_b_bal: Balance<CoinTypeB> = fund.balances.remove(trader_allocation.coin_id);
+        let mut coin_b = coin::from_balance(coin_b_bal, ctx);
+
+        let mut coin_a = coin::from_balance(balance::zero<CoinTypeA>(), ctx);
+     
+        centus_swap_b2a(config, pool, &mut coin_a, &mut coin_b, true, amount, amount, sqrt_price_limit, clock, ctx);            
+    
+        let coin_a_id = fund.balances.length();
+        let coin_b_bal = coin_a.into_balance();
+
+        let coin_a_alloc = TraderAllocation {
             id: object::new(ctx),
             fund_id: fund.id.to_inner(),
-            coin_id: coin_b_id,
-            amount: amount * 3543781
+            coin_id: coin_a_id,
+            amount: coin_b_bal.value()
         };
 
-        transfer::transfer(coin_b_alloc, ctx.sender());            
+        transfer::transfer(coin_a_alloc, ctx.sender());
+
+        fund.balances.add(trader_allocation.coin_id, coin_b.into_balance());
+        fund.balances.add(coin_a_id, coin_b_bal);        
 
         trader_allocation.amount = trader_allocation.amount - amount;
     }
-
+  
 }
