@@ -10,7 +10,7 @@ This project contains a Move smart contract for creating, participating in, and 
 
 ## Intro Media
 Demo: https://www.youtube.com/watch?v=Zk9pm4pE17Q
-Pitch video: 
+Pitch video: https://www.youtube.com/watch?v=gjM2OoldBxE
 Pitch slides: https://www.canva.com/design/DAGFCZBrE08/xbVdEP4-rMhIdkTQkb6erw/view
 
 
